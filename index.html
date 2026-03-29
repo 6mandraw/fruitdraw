@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>命運水果盤</title>
+
+<style>
+body {
+  background: url("background.jpeg") no-repeat center center fixed;
+  background-size: cover;
+  color: white;
+  text-align: center;
+  font-family: Arial;
+}
+
+/* 🎰 標題 */
+.title {
+  margin: 20px;
+  font-size: 42px;
+  font-weight: bold;
+  color: #fff;
+
+  text-shadow:
+    0 0 5px #ffd700,
+    0 0 10px #ffd700,
+    0 0 20px #ffcc00,
+    0 0 40px #ffcc00;
+
+  animation: floatTitle 1.2s ease-in-out infinite;
+}
+
+@keyframes floatTitle {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0); }
+}
+
+#board {
+  display: grid;
+  grid-template-columns: repeat(12, 60px);
+  gap: 6px;
+  justify-content: center;
+}
+
+.cell {
+  width: 60px;
+  height: 60px;
+  font-size: 30px;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+  color: transparent; /* ⭐ 重點：一開始完全隱藏 */
+  user-select: none;
+}
+
+.cell:hover {
+  outline: 3px solid #ff4d6d;
+  transform: scale(1.05);
+}
+
+.win {
+  background: white !important;
+  color: black;
+  box-shadow: 0 0 15px gold, 0 0 30px gold;
+}
+
+.confetti {
+  position: fixed;
+  width: 8px;
+  height: 8px;
+  top: -10px;
+  animation: fall linear forwards;
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<h1 class="title">🎰命運水果盤🎰</h1>
+<div id="board"></div>
+
+<audio id="winSound" src="winSound.mp3" preload="auto"></audio>
+
+<script>
+/* =========================
+   🎯 基本設定
+========================= */
+
+const fruits = ["🥝","🍇","🍉","🍊","🍋","🍌","🍍","🥥","🥑","🍑","🍒","🍏"];
+
+let revealed = [];
+let cells = [];
+let winRecord = {};
+
+/* =========================
+   🎲 建立棋盤
+========================= */
+
+function generateGrid() {
+  let grid = [];
+
+  fruits.forEach(fruit => {
+    for (let i = 0; i < 11; i++) {
+      grid.push(fruit);
+    }
+  });
+
+  for (let i = grid.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [grid[i], grid[j]] = [grid[j], grid[i]];
+  }
+
+  return grid;
+}
+
+const board = document.getElementById("board");
+const data = generateGrid();
+
+/* =========================
+   🏆 中獎判定（3連可累積）
+========================= */
+
+function checkWin(symbol) {
+  const count = revealed.filter(x => x === symbol).length;
+
+  if (!winRecord[symbol]) {
+    winRecord[symbol] = 0;
+  }
+
+  const shouldWin = Math.floor(count / 3);
+
+  while (winRecord[symbol] < shouldWin) {
+    winRecord[symbol]++;
+    triggerWin(symbol);
+  }
+}
+
+/* =========================
+   🎉 中獎效果
+========================= */
+
+function triggerWin(symbol) {
+  playSound();
+
+  cells.forEach(cell => {
+    if (cell.value === symbol && cell.opened) {
+      cell.el.classList.add("win");
+    }
+  });
+
+  launchConfetti();
+}
+
+/* =========================
+   🔊 音效
+========================= */
+
+function playSound() {
+  const audio = document.getElementById("winSound");
+  audio.volume = 0.5;
+  audio.currentTime = 0;
+  audio.play().catch(()=>{});
+}
+
+/* =========================
+   🎊 特效
+========================= */
+
+function launchConfetti() {
+  for (let i = 0; i < 80; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+
+    c.style.left = Math.random() * window.innerWidth + "px";
+    c.style.background = `hsl(${Math.random()*360},100%,50%)`;
+    c.style.animationDuration = (Math.random()*2 + 2) + "s";
+
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 4000);
+  }
+}
+
+/* =========================
+   🧩 建立卡牌（完全隱藏版）
+========================= */
+
+data.forEach(item => {
+  const cell = document.createElement("div");
+  cell.className = "cell";
+
+  const cellObj = {
+    el: cell,
+    value: item,
+    opened: false
+  };
+
+  cells.push(cellObj);
+
+  cell.addEventListener("click", () => {
+    if (cellObj.opened) return;
+
+    cellObj.opened = true;
+
+    // 翻開顯示
+    cell.style.color = "white";
+    cell.innerText = item;
+
+    revealed.push(item);
+    checkWin(item);
+  });
+
+  board.appendChild(cell);
+});
+</script>
+
+</body>
+</html>
